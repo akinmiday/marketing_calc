@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import * as ctrl from '../controllers/invoices'
+import { requireAuth } from '../middleware/auth'
 
 export const router = Router()
 
+router.use(requireAuth)
 router.get('/', ctrl.list)
 router.get('/:id', ctrl.getOne)
 router.post('/', ctrl.create)

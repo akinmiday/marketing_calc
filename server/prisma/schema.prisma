@@ -7,12 +7,28 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  passwordHash        String
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  receipts            Receipt[]
+  invoices            Invoice[]
+}
+
 model Receipt {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   label     String?
   payload   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Invoice {
@@ -23,4 +39,8 @@ model Invoice {
   usdRate   Float?
   payload   String
   totals    String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

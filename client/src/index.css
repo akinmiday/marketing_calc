@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { @apply bg-slate-50 text-slate-900; }
+
+/* App shell */
+.app-gradient{
+  background:
+    radial-gradient(800px 600px at 0% 0%, rgba(5, 150, 105, .08), transparent 40%),
+    radial-gradient(600px 400px at 100% 0%, rgba(16, 185, 129, .08), transparent 40%);
+}
+
+@media print {
+  body, .app-gradient {
+    background: white !important;
+  }
+  nav, .no-print {
+    display: none !important;
+  }
+  .print-area {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .print-area table {
+    page-break-inside: auto;
+  }
+}
