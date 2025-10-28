@@ -25,10 +25,12 @@ model Receipt {
   updatedAt DateTime @updatedAt
   label     String?
   payload   String
+  receiptNumber Int
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@unique([userId, receiptNumber])
 }
 
 model Invoice {
@@ -39,8 +41,10 @@ model Invoice {
   usdRate   Float?
   payload   String
   totals    String
+  invoiceNumber Int
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@unique([userId, invoiceNumber])
 }

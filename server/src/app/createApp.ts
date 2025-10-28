@@ -14,7 +14,7 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true }))
   app.use(compression())
   app.use(morgan('dev'))
-  app.use(cors({ origin: (origin, cb) => {
+  app.use(cors({ origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
     if (!origin) return cb(null, true)
     if (env.CORS_ARRAY.length === 0 || env.CORS_ARRAY.includes(origin)) return cb(null, true)
     return cb(new Error('Not allowed by CORS'))

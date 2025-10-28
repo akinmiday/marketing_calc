@@ -112,6 +112,7 @@ const ensureResults = (raw: any, products: ProductInput[]): Results => {
 export type Receipt = {
   id: string
   createdAt: string
+  receiptNumber?: number
   baseCurrency: Currency
   usdRate: number
   products: ProductInput[]
@@ -150,6 +151,7 @@ const normaliseReceipt = (raw: any): Receipt | null => {
   const receipt: Receipt = {
     id: typeof raw.id === 'string' ? raw.id : randomId(),
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    receiptNumber: Number.isFinite(raw.receiptNumber) ? Number(raw.receiptNumber) : undefined,
     baseCurrency,
     usdRate: toNumber(raw.usdRate, 1),
     products,
@@ -234,6 +236,7 @@ export function getEditingReceiptId(): string | null {
 export type InvoiceRecord = {
   id: string
   createdAt: string
+  invoiceNumber?: number
   invoice: InvoiceData
   totals: {
     subtotal: number
@@ -255,6 +258,7 @@ const normaliseInvoiceRecord = (raw: any): InvoiceRecord | null => {
   return {
     id: typeof raw.id === 'string' ? raw.id : randomId(),
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    invoiceNumber: Number.isFinite(raw.invoiceNumber) ? Number(raw.invoiceNumber) : undefined,
     invoice: invoice as InvoiceData,
     totals: {
       subtotal: toNumber(raw?.totals?.subtotal),

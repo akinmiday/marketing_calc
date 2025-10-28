@@ -122,13 +122,44 @@ function Line({ label, children, variant }: { label: string; children: React.Rea
   )
 }
 
-export function ReceiptSummary({ title, currency, results, productName, quantity, products, usdRate }: { title: string; currency: Currency; results: Results; productName?: string; quantity?: number; products?: ProductInput[]; usdRate: number }) {
+const formatReceiptNumber = (value?: number) => {
+  if (!value || !Number.isFinite(value) || value <= 0) return null
+  return value.toString().padStart(4, '0')
+}
+
+export function ReceiptSummary({
+  title,
+  currency,
+  results,
+  productName,
+  quantity,
+  products,
+  usdRate,
+  receiptNumber,
+}: {
+  title: string
+  currency: Currency
+  results: Results
+  productName?: string
+  quantity?: number
+  products?: ProductInput[]
+  usdRate: number
+  receiptNumber?: number
+}) {
   const breakdown = results.productBreakdown ?? []
+  const formattedReceiptNumber = formatReceiptNumber(receiptNumber)
   return (
     <div className="rounded-2xl border bg-white p-0 shadow-soft overflow-hidden">
       {/* Receipt header */}
       <div className="bg-slate-900 text-white px-5 py-3">
-        <div className="text-xs uppercase tracking-widest opacity-80">Receipt</div>
+        <div className="flex items-center justify-between text-xs uppercase tracking-widest opacity-80">
+          <span>Receipt</span>
+          {formattedReceiptNumber && (
+            <span className="rounded-full border border-white/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-100">
+              #{formattedReceiptNumber}
+            </span>
+          )}
+        </div>
         <div className="flex items-center justify-between">
           <div className="text-lg font-semibold">{title}</div>
           {productName && <div className="text-xs bg-white/10 rounded-full px-2 py-0.5">{productName}</div>}

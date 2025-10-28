@@ -19,7 +19,7 @@ export async function list(req: Request, res: Response, next: NextFunction) {
     const q = String(req.query.q || '').toLowerCase()
     const items = await prisma.receipt.findMany({
       where: { userId: req.user.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { receiptNumber: 'desc' },
     })
     const filtered = q ? items.filter(i => (i.label || '').toLowerCase().includes(q)) : items
     res.json(
@@ -66,12 +66,21 @@ export async function create(req: Request, res: Response, next: NextFunction) {
     const body = ReceiptCreateSchema.parse(req.body)
     const results = computeCalculator(body.input)
     const payloadObj = { input: body.input, results }
-    const created = await prisma.receipt.create({
-      data: {
-        label: body.label,
-        payload: JSON.stringify(payloadObj),
-        userId: req.user.id,
-      },
+    const created = await prisma.$transaction(async (tx) => {
+      const last = await tx.receipt.findFirst({
+        where: { userId: req.user!.id },
+        orderBy: { receiptNumber: 'desc' },
+        select: { receiptNumber: true },
+      })
+      const nextReceiptNumber = (last?.receiptNumber ?? 0) + 1
+      return tx.receipt.create({
+        data: {
+          label: body.label,
+          payload: JSON.stringify(payloadObj),
+          userId: req.user!.id,
+          receiptNumber: nextReceiptNumber,
+        },
+      })
     })
     res.status(201).json({ ...created, payload: payloadObj })
   } catch (err) {

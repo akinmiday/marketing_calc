@@ -91,6 +91,7 @@ export type Receipt = {
   id: string
   createdAt: string
   updatedAt?: string
+  receiptNumber: number
   baseCurrency: Currency
   usdRate: number
   products: ProductInput[]
@@ -113,6 +114,7 @@ export type InvoiceRecord = {
   id: string
   createdAt: string
   updatedAt?: string
+  invoiceNumber?: number
   invoice: InvoiceData
   totals: InvoiceTotals
   label?: string

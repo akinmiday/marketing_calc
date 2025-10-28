@@ -54,12 +54,16 @@ const matchesCharacterSet = (value: string | null | undefined, rawQuery: string)
 
 const buildInvoiceDocumentTitle = (invoice: InvoiceData | null) => {
   if (!invoice) return ''
+  const invoiceNumber = sanitizeTitlePart(invoice.invoiceNumber || '')
   const clientName = sanitizeTitlePart(invoice.to?.name || '')
-  const receiptNumber = sanitizeTitlePart(invoice.invoiceNumber || '')
-  if (clientName && receiptNumber) return `${clientName} - Receipt ${receiptNumber}`
-  if (receiptNumber) return `Receipt ${receiptNumber}`
-  if (clientName) return `${clientName} - Receipt`
-  return ''
+  const firstItem = sanitizeTitlePart(invoice.items?.[0]?.description || '')
+  const issueDate = sanitizeTitlePart(invoice.issueDate || '')
+  const reference = invoiceNumber ? `Invoice ${invoiceNumber}` : 'Invoice'
+  const parts = [reference]
+  if (clientName) parts.push(clientName)
+  if (firstItem) parts.push(firstItem)
+  parts.push(issueDate || new Date().toISOString().split('T')[0])
+  return parts.filter(Boolean).join(' - ')
 }
 
 const computeTotals = (invoice: InvoiceData): InvoiceTotals => {
@@ -88,6 +92,8 @@ const nextTwoWeeks = () => {
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
+
+const trimOrEmpty = (value: string | null | undefined) => (value ?? '').trim()
 
 const decodePayload = (raw: string | null) => {
   if (!raw) return null
@@ -164,7 +170,7 @@ const makeInitialInvoice = (currency: Currency, products: ProductInput[]): Invoi
   }
 
   return {
-    invoiceNumber: `CA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 900 + 100)}`,
+    invoiceNumber: 'Pending assignment',
     issueDate: todayIso(),
     dueDate: nextTwoWeeks(),
     currency,
@@ -519,19 +525,49 @@ export default function InvoicePage() {
       }
     })
 
-    const cleanedInvoice: InvoiceData = { ...invoice, items: cleanedItems }
-    setInvoice(cleanedInvoice)
+    const issueDate = trimOrEmpty(invoice.issueDate) || todayIso()
+    const dueDate = trimOrEmpty(invoice.dueDate) || nextTwoWeeks()
+    const sanitizedInvoice: InvoiceData = {
+      ...invoice,
+      invoiceNumber: trimOrEmpty(invoice.invoiceNumber) || 'Pending assignment',
+      issueDate,
+      dueDate,
+      currency: invoice.currency,
+      notes: trimOrEmpty(invoice.notes),
+      terms: trimOrEmpty(invoice.terms),
+      from: {
+        ...invoice.from,
+        name: trimOrEmpty(invoice.from.name) || companyDefaults.name,
+        email: trimOrEmpty(invoice.from.email),
+        phone: trimOrEmpty(invoice.from.phone),
+        address: trimOrEmpty(invoice.from.address),
+      },
+      to: {
+        ...invoice.to,
+        name: trimOrEmpty(invoice.to.name),
+        email: trimOrEmpty(invoice.to.email),
+        phone: trimOrEmpty(invoice.to.phone),
+        address: trimOrEmpty(invoice.to.address),
+      },
+      items: cleanedItems,
+    }
     setIsSaving(true)
     try {
       const existingId = getEditingInvoiceId()
-      const label = cleanedInvoice.invoiceNumber || cleanedInvoice.from.name || 'Invoice'
+      const label =
+        sanitizedInvoice.invoiceNumber ||
+        sanitizedInvoice.to.name ||
+        sanitizedInvoice.from.name ||
+        'Invoice'
       const usdRate = calcState.usdRate
       if (existingId && !asNew) {
-        const updated = await updateInvoiceApi(existingId, { invoice: cleanedInvoice, label, usdRate })
+        const updated = await updateInvoiceApi(existingId, { invoice: sanitizedInvoice, label, usdRate })
+        setInvoice(updated.invoice)
         setEditingInvoiceId(updated.id)
         alert('Updated invoice in history.')
       } else {
-        const created = await createInvoice({ invoice: cleanedInvoice, label, usdRate })
+        const created = await createInvoice({ invoice: sanitizedInvoice, label, usdRate })
+        setInvoice(created.invoice)
         setEditingInvoiceId(created.id)
         alert('Saved invoice to history.')
       }
@@ -641,11 +677,16 @@ export default function InvoicePage() {
           >
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="Invoice number">
-                <input
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
-                  value={invoice.invoiceNumber}
-                  onChange={(e) => updateInvoice('invoiceNumber', e.target.value)}
-                />
+                <div className="flex flex-col gap-1 rounded-lg border bg-slate-50 px-3 py-2 text-sm">
+                  <span className="font-mono text-slate-800">
+                    {invoice.invoiceNumber && invoice.invoiceNumber.trim().length > 0
+                      ? invoice.invoiceNumber
+                      : 'Pending assignment'}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    Assigned automatically from your latest invoice when you save.
+                  </span>
+                </div>
               </Field>
               <Field label="Currency">
                 <select

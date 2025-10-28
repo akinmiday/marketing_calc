@@ -92,6 +92,17 @@ const matchesCharacterSet = (value: string | null | undefined, rawQuery: string)
   return uniqueChars.every((char) => haystack.includes(char))
 }
 
+const formatReceiptNumber = (value: number | undefined | null) => {
+  if (!value || !Number.isFinite(value) || value <= 0) return '—'
+  return value.toString().padStart(4, '0')
+}
+
+const slugify = (value: string | null | undefined) =>
+  (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
 const CALC_PAGE_SIZE = 5
 const INVOICE_PAGE_SIZE = 5
 
@@ -461,16 +472,13 @@ export default function HistoryPage() {
       alert('Unable to prepare PDF download.')
       return
     }
-    const baseLabel =
-      selectedCalc.label || selectedCalc.products[0]?.name || 'calculation'
-    const slug = baseLabel
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
+    const receiptNumberLabel = selectedCalc.receiptNumber > 0 ? `receipt-${formatReceiptNumber(selectedCalc.receiptNumber)}` : 'receipt'
+    const clientSlug = slugify(selectedCalc.label) || 'client'
+    const productSlug = slugify(selectedCalc.products[0]?.name) || 'product'
     const parsedDate = new Date(selectedCalc.createdAt)
     const safeDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate
     const dateStamp = safeDate.toISOString().split('T')[0]
-    const fileName = `${slug || 'calculation'}-${dateStamp}.pdf`
+    const fileName = [receiptNumberLabel, clientSlug, productSlug, dateStamp].filter(Boolean).join('_') + '.pdf'
     const objectUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = objectUrl
@@ -580,18 +588,24 @@ export default function HistoryPage() {
               const isActive = selectedCalc?.id === receipt.id
               const totalQuantity = sumQuantity(receipt)
               const isSelected = !!selectionMap[receipt.id]
+              const receiptNumberLabel = formatReceiptNumber(receipt.receiptNumber)
+              const primaryName = receipt.label || receipt.products[0]?.name || 'Untitled'
+              const createdAt = new Date(receipt.createdAt)
+              const createdStamp = Number.isNaN(createdAt.getTime())
+                ? null
+                : createdAt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
               return (
                 <div
                   key={receipt.id}
-                  className={`group relative rounded-lg border px-3 py-3 ${
-                    isActive ? 'border-emerald-300 bg-emerald-50/60' : 'border-transparent hover:bg-slate-50'
+                  className={`group relative rounded-lg border px-3 py-3 transition ${
+                    isActive ? 'border-emerald-300 bg-emerald-50/70 shadow-[0_0_0_1px_rgba(16,185,129,0.15)]' : 'border-transparent hover:bg-slate-50'
                   }`}
                   aria-selected={isActive}
                   role="button"
                   onClick={() => handleSelectCalc(receipt)}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex shrink-0 items-start gap-2">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="flex shrink-0 items-start gap-2 sm:max-w-[65%]">
                       <button
                         className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded border bg-white text-slate-500 hover:bg-slate-100"
                         onClick={(e) => { e.stopPropagation(); handleToggleSelection(receipt) }}
@@ -600,15 +614,25 @@ export default function HistoryPage() {
                         {isSelected ? <CheckSquare className="h-4 w-4 text-emerald-600" /> : <Square className="h-4 w-4" />}
                       </button>
                       <div className="min-w-0">
-                        <div className="truncate text-[15px] font-semibold leading-snug">
-                          {receipt.label || receipt.products[0]?.name || 'Untitled'}
+                        <div className="flex flex-wrap items-center gap-2 text-[13px] font-semibold leading-snug text-slate-800">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-white">
+                            #{receiptNumberLabel}
+                          </span>
+                          <span className="truncate">{primaryName}</span>
                         </div>
-                        <div className="mt-0.5 text-xs text-slate-500">
-                          {receipt.products.length} product{receipt.products.length === 1 ? '' : 's'} • Qty {totalQuantity.toLocaleString()}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                          <span className="shrink-0">
+                            {receipt.products.length} product{receipt.products.length === 1 ? '' : 's'} • Qty {totalQuantity.toLocaleString()}
+                          </span>
+                          {createdStamp && (
+                            <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                              Saved {createdStamp}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 flex w-full flex-wrap items-center justify-end gap-2 sm:mt-0 sm:w-auto">
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:mt-0 sm:w-auto sm:justify-end">
                       <button
                         className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-slate-100"
                         onClick={(e) => {
@@ -726,8 +750,9 @@ export default function HistoryPage() {
               </Card>
 
               <ReceiptSummary
-                title="Receipt"
-                productName={selectedCalc.label || selectedCalc.products[0]?.name}
+                title={selectedCalc.label || selectedCalc.products[0]?.name || 'Receipt'}
+                receiptNumber={selectedCalc.receiptNumber}
+                productName={selectedCalc.products[0]?.name}
                 currency={selectedCalc.baseCurrency}
                 results={selectedCalc.results}
                 quantity={sumQuantity(selectedCalc)}
@@ -801,11 +826,17 @@ export default function HistoryPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-[15px] font-semibold leading-snug">
-                      {record.invoice.invoiceNumber || record.label || 'Invoice'}
+                    <div className="flex flex-wrap items-center gap-2 text-[13px] font-semibold leading-snug text-slate-800">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-white">
+                        #{record.invoice.invoiceNumber || record.label || '—'}
+                      </span>
+                      <span className="truncate">{clientName}</span>
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-500">
-                      {clientName} • {new Date(record.createdAt).toLocaleString()}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{new Date(record.createdAt).toLocaleString()}</span>
+                      <span className="text-slate-400">
+                        {record.invoice.items.length} item{record.invoice.items.length === 1 ? '' : 's'}
+                      </span>
                     </div>
                   </div>
                   <div className="mt-3 flex w-full flex-wrap items-center justify-end gap-2 sm:mt-0 sm:w-auto">
@@ -851,7 +882,6 @@ export default function HistoryPage() {
                     primaryClassName="font-semibold text-slate-700"
                     secondaryClassName="text-[10px] text-slate-500"
                   />
-                  <span>{record.invoice.items.length} item{record.invoice.items.length === 1 ? '' : 's'}</span>
                 </div>
                 {isActive && <div className="absolute left-0 top-0 h-full w-1 rounded-l bg-emerald-500" />}
               </div>
@@ -1068,13 +1098,18 @@ function renderReportHtml(receipt: Receipt, markupPct: number) {
 function ReportModal({ onClose, receipt, computedMarkupPct }: { onClose: () => void; receipt: Receipt; computedMarkupPct: number }) {
   const totalQuantity = sumQuantity(receipt)
   const formatMoney = (value: number) => formatWithConversion(receipt.baseCurrency, value, receipt.usdRate)
+  const receiptNumberLabel = formatReceiptNumber(receipt.receiptNumber)
+  const createdStamp = new Date(receipt.createdAt)
+  const createdLabel = Number.isNaN(createdStamp.getTime()) ? receipt.createdAt : createdStamp.toLocaleString()
   return (
     <div className="fixed inset-0 z-30 bg-black/40 p-3 md:p-6" role="dialog" aria-modal="true">
       <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
         <div className="border-b bg-slate-50 px-4 py-3 text-center">
           <div className="text-xs tracking-widest text-slate-500">CALCULATION SUMMARY</div>
           <div className="mt-1 text-lg font-bold text-slate-900">{receipt.label || 'Untitled calculation'}</div>
-          <div className="text-[11px] text-slate-500">{new Date(receipt.createdAt).toLocaleString()}</div>
+          <div className="mt-1 text-[11px] text-slate-500">
+            {receiptNumberLabel !== '—' ? `Receipt #${receiptNumberLabel}` : 'Receipt'} • {createdLabel}
+          </div>
         </div>
         <div className="px-4 py-4">
           <div className="grid grid-cols-2 gap-2 text-[12px] text-slate-600">

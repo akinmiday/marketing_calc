@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
-import jwt from 'jsonwebtoken'
+import jwt, { Secret, SignOptions } from 'jsonwebtoken'
 import crypto from 'crypto'
 import { prisma } from '../services/prisma'
 import { hashPassword, verifyPassword } from '../utils/password'
@@ -31,7 +31,8 @@ const ChangePasswordSchema = z.object({
 })
 
 function signToken(userId: string, email: string) {
-  return jwt.sign({ sub: userId, email }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN })
+  const options: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'] }
+  return jwt.sign({ sub: userId, email }, env.JWT_SECRET as Secret, options)
 }
 
 function toPublicUser(user: { id: string; email: string; createdAt: Date; updatedAt: Date }) {

@@ -309,9 +309,25 @@ export const generateReceiptPdf = (receipt: Receipt, markupPct: number) => {
     const products = receipt.products ?? []
     const extras = receipt.extras ?? []
     const totals = receipt.results
+    const receiptNumberValue =
+      typeof receipt.receiptNumber === 'number' && Number.isFinite(receipt.receiptNumber)
+        ? receipt.receiptNumber
+        : null
+    const receiptNumberLabel =
+      receiptNumberValue && receiptNumberValue > 0
+        ? String(receiptNumberValue).padStart(4, '0')
+        : null
 
-    builder.addLine('Calculation Report', { font: 'F2', size: 18, lineHeight: 26 })
-    builder.addLine(receipt.label || 'Untitled calculation', { font: 'F1', size: 14, lineHeight: 20 })
+    if (receiptNumberLabel) {
+      builder.addLine(`Receipt #${receiptNumberLabel}`, { font: 'F2', size: 18, lineHeight: 26 })
+    } else {
+      builder.addLine('Receipt summary', { font: 'F2', size: 18, lineHeight: 26 })
+    }
+    builder.addLine(receipt.label || receipt.products[0]?.name || 'Untitled calculation', {
+      font: 'F1',
+      size: 14,
+      lineHeight: 20,
+    })
     builder.addLine(`Created: ${createdLabel}`, { font: 'F1', size: 11, lineHeight: 15 })
     builder.addLine(
       `Base currency: ${receipt.baseCurrency}   Products: ${products.length}   Quantity: ${fmt(totalQuantity)}`,

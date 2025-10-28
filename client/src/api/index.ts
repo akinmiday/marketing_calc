@@ -8,6 +8,7 @@ type ReceiptApiResponse = {
   id: string
   createdAt: string
   updatedAt: string
+  receiptNumber: number
   label?: string | null
   payload: {
     input: CalcInput
@@ -19,6 +20,7 @@ type InvoiceApiResponse = {
   id: string
   createdAt: string
   updatedAt: string
+  invoiceNumber: number
   label?: string | null
   usdRate?: number | null
   payload: InvoiceData
@@ -87,6 +89,7 @@ function normalizeReceipt(api: ReceiptApiResponse): Receipt {
     id: api.id,
     createdAt: api.createdAt,
     updatedAt: api.updatedAt,
+    receiptNumber: Number.isFinite(api.receiptNumber) ? api.receiptNumber : 0,
     baseCurrency: input?.baseCurrency ?? 'NGN',
     usdRate: input?.usdRate ?? 1,
     products: Array.isArray(input?.products) ? input.products : [],
@@ -115,6 +118,7 @@ function normalizeInvoice(api: InvoiceApiResponse): InvoiceRecord {
     id: api.id,
     createdAt: api.createdAt,
     updatedAt: api.updatedAt,
+    invoiceNumber: Number.isFinite(api.invoiceNumber) ? api.invoiceNumber : undefined,
     invoice: api.payload,
     totals: api.totals,
     label: api.label ?? undefined,
