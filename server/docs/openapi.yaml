@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: Marketing Calculator API
+  version: 1.0.1
+servers:
+  - url: http://localhost:4000/api/v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /calc/compute:
+    post:
+      summary: Compute calculator results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalcInput'
+      responses:
+        '200':
+          description: Computed results
+  /receipts:
+    get:
+      summary: List receipts
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+    post:
+      summary: Create receipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptCreate'
+  /receipts/{id}:
+    get:
+      summary: Get receipt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+    put:
+      summary: Update receipt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Delete receipt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+  /invoices:
+    get:
+      summary: List invoices
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+    post:
+      summary: Create invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+  /invoices/{id}:
+    get:
+      summary: Get invoice
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+    put:
+      summary: Update invoice
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Delete invoice
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+components:
+  schemas:
+    Currency:
+      type: string
+      enum: [NGN, USD]
+    Allocation:
+      type: string
+      enum: [per-unit, per-order]
+    ExtraCost:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        kind: { type: string, enum: [amount, percent] }
+        amount: { type: number }
+        currency: { $ref: '#/components/schemas/Currency' }
+        percent: { type: number }
+        allocation: { $ref: '#/components/schemas/Allocation' }
+      required: [id, label, kind, allocation]
+    ProductInput:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        quantity: { type: number }
+        unitSellPrice: { type: number }
+        unitSupplierCost: { type: number }
+        unitProductionOverhead: { type: number }
+        markupPct: { type: number }
+      required: [id, quantity]
+    CalcInput:
+      type: object
+      properties:
+        baseCurrency: { $ref: '#/components/schemas/Currency' }
+        usdRate: { type: number }
+        products:
+          type: array
+          items: { $ref: '#/components/schemas/ProductInput' }
+        extras:
+          type: array
+          items: { $ref: '#/components/schemas/ExtraCost' }
+        targetMarginPct: { type: number }
+      required: [baseCurrency, products, extras]
+    InvoiceItem:
+      type: object
+      properties:
+        id: { type: string }
+        description: { type: string }
+        quantity: { type: number }
+        unitPrice: { type: number }
+      required: [id, description, quantity, unitPrice]
+    InvoiceParty:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        address: { type: string }
+    InvoiceData:
+      type: object
+      properties:
+        invoiceNumber: { type: string }
+        issueDate: { type: string }
+        dueDate: { type: string }
+        currency: { $ref: '#/components/schemas/Currency' }
+        from: { $ref: '#/components/schemas/InvoiceParty' }
+        to: { $ref: '#/components/schemas/InvoiceParty' }
+        notes: { type: string }
+        terms: { type: string }
+        discountPct: { type: number }
+        taxPct: { type: number }
+        shipping: { type: number }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InvoiceItem' }
+      required: [invoiceNumber, issueDate, dueDate, currency, from, to, items]
+    ReceiptCreate:
+      type: object
+      properties:
+        label: { type: string }
+        input: { $ref: '#/components/schemas/CalcInput' }
+      required: [input]
+    InvoiceCreate:
+      type: object
+      properties:
+        label: { type: string }
+        usdRate: { type: number }
+        invoice: { $ref: '#/components/schemas/InvoiceData' }
+      required: [invoice]
